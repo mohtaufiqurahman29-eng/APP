@@ -59,7 +59,7 @@ class _InfoLautHomeState extends State<InfoLautHome> {
             label: 'Dashboard',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.map),
+            icon: Icon(Icons.map),  
             label: 'Peta',
           ),
           BottomNavigationBarItem(

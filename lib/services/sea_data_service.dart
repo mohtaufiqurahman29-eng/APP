@@ -54,19 +54,22 @@ class SeaDataService {
     );
   }
 
-  // Get tide schedule
+  // Get tide schedule from 00:00 to 23:00 of today
   static TideSchedule generateTideSchedule() {
     final now = DateTime.now();
+    final startOfToday = DateTime(now.year, now.month, now.day, 0, 0);
     final schedule = <TideData>[];
 
     for (int i = 0; i < 24; i++) {
-      final time = now.add(Duration(hours: i));
+      final time = startOfToday.add(Duration(hours: i));
+      final hour = i.toDouble();
       
-      // Tide follows semi-diurnal pattern (2 high tides, 2 low tides per day)
-      final hour = time.hour.toDouble();
-      final heightValue = 1.5 + 1.0 * (1 + sin(hour / 6 - (hour ~/ 6).toDouble()));
+      // Tide follows semi-diurnal pattern (2 cycles per 24 hours, ~12 hour period)
+      // High tide peaks at 06:00 and 18:00, low tide peaks at 00:00 and 12:00
+      final double angle = (hour - 3) * pi / 6;
+      final heightValue = 1.5 + 0.9 * sin(angle);
       
-      final type = heightValue > 1.8 ? 'Pasang' : 'Surut';
+      final type = heightValue > 1.5 ? 'Pasang' : 'Surut';
 
       schedule.add(TideData(
         time: time,
