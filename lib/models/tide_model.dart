@@ -1,54 +1,36 @@
-class TideData {
-  final DateTime time;
-  final double height; // dalam meter
-  final String type; // "Pasang" atau "Surut"
-
-  TideData({
-    required this.time,
-    required this.height,
-    required this.type,
-  });
-
-  factory TideData.fromJson(Map<String, dynamic> json) {
-    return TideData(
-      time: DateTime.parse(json['time'] ?? DateTime.now().toIso8601String()),
-      height: (json['height'] as num).toDouble(),
-      type: json['type'] ?? 'Pasang',
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'time': time.toIso8601String(),
-      'height': height,
-      'type': type,
-    };
-  }
-}
-
 class TideSchedule {
-  final List<TideData> schedule;
-  final DateTime generatedAt;
+  final String location;
+  final String lastUpdated;
+  final List<TideDataPoint> dataPoints;
 
   TideSchedule({
-    required this.schedule,
-    required this.generatedAt,
+    required this.location,
+    required this.lastUpdated,
+    required this.dataPoints,
   });
 
   factory TideSchedule.fromJson(Map<String, dynamic> json) {
+    var list = json['dataPoints'] as List;
+    List<TideDataPoint> dataList = list.map((i) => TideDataPoint.fromJson(i)).toList();
+
     return TideSchedule(
-      schedule: (json['schedule'] as List<dynamic>?)
-              ?.map((e) => TideData.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [],
-      generatedAt: DateTime.parse(json['generatedAt'] ?? DateTime.now().toIso8601String()),
+      location: json['location'] ?? '',
+      lastUpdated: json['lastUpdated'] ?? '',
+      dataPoints: dataList,
     );
   }
+}
 
-  Map<String, dynamic> toJson() {
-    return {
-      'schedule': schedule.map((e) => e.toJson()).toList(),
-      'generatedAt': generatedAt.toIso8601String(),
-    };
+class TideDataPoint {
+  final String time;
+  final double height;
+
+  TideDataPoint({required this.time, required this.height});
+
+  factory TideDataPoint.fromJson(Map<String, dynamic> json) {
+    return TideDataPoint(
+      time: json['time'] ?? '',
+      height: (json['height'] as num).toDouble(),
+    );
   }
 }

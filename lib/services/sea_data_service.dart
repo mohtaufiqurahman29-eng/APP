@@ -1,132 +1,68 @@
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'dart:math';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/sea_condition_model.dart';
-import '../models/tide_model.dart';
-import '../models/fish_model.dart';
-import '../models/logbook_model.dart';
-import '../models/location_model.dart';
+import '../models/tide_model.dart'; // Mengarah ke file model pasang surutmu
 
 class SeaDataService {
-  static const String _seaConditionKey = 'sea_condition';
-  static const String _cacheTimestampKey = 'cache_timestamp';
+  static const String _storageKey = 'laporan_laut_db';
 
-  // Generate safety status based on conditions
-  static String _generateSafetyStatus(double waveHeight, double windSpeed) {
-    if (waveHeight > 400 || windSpeed > 40) {
-      return 'BAHAYA';
-    } else if (waveHeight > 200 || windSpeed > 25) {
-      return 'WASPADA';
-    }
-    return 'AMAN';
-  }
-
-  // Get current sea condition (dummy data with variation)
-  static SeaCondition generateCurrentSeaCondition() {
-    final now = DateTime.now();
-    final hour = now.hour;
-    
-    // Wave height varies throughout the day (higher in afternoon)
-    final baseWaveHeight = 100 + (hour - 6) * 10.0;
-    final waveHeight = baseWaveHeight.clamp(80.0, 250.0);
-    
-    // Wind speed variation
-    final windSpeed = 10.0 + (hour % 6) * 2.5;
-    
-    final windDirections = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-    final windDirection = windDirections[hour % 8];
-    
-    final airPressure = 1013.0 + (hour % 12) * 0.5;
-    final temperature = 26.0 + (hour - 12) * 0.5;
-    final humidity = 70 + (hour % 6) * 2;
-
-    final safetyStatus = _generateSafetyStatus(waveHeight, windSpeed);
-
-    return SeaCondition(
-      waveHeight: waveHeight,
-      windSpeed: windSpeed,
-      windDirection: windDirection,
-      airPressure: airPressure,
-      safetyStatus: safetyStatus,
-      timestamp: now,
-      temperature: temperature.clamp(20.0, 32.0),
-      humidity: humidity.clamp(60, 95),
-    );
-  }
-
-  // Get tide schedule from 00:00 to 23:00 of today
-  static TideSchedule generateTideSchedule() {
-    final now = DateTime.now();
-    final startOfToday = DateTime(now.year, now.month, now.day, 0, 0);
-    final schedule = <TideData>[];
-
-    for (int i = 0; i < 24; i++) {
-      final time = startOfToday.add(Duration(hours: i));
-      final hour = i.toDouble();
-      
-      // Tide follows semi-diurnal pattern (2 cycles per 24 hours, ~12 hour period)
-      // High tide peaks at 06:00 and 18:00, low tide peaks at 00:00 and 12:00
-      final double angle = (hour - 3) * pi / 6;
-      final heightValue = 1.5 + 0.9 * sin(angle);
-      
-      final type = heightValue > 1.5 ? 'Pasang' : 'Surut';
-
-      schedule.add(TideData(
-        time: time,
-        height: heightValue.clamp(0.5, 2.5),
-        type: type,
-      ));
-    }
-
-    return TideSchedule(
-      schedule: schedule,
-      generatedAt: now,
-    );
-  }
-
-  // Save to cache
-  static Future<void> saveToCache(SeaCondition condition) async {
+  // Fungsi untuk mengambil data dari memori HP
+  static Future<List<SeaCondition>> getSavedReports() async {
     final prefs = await SharedPreferences.getInstance();
-    final json = jsonEncode(condition.toJson());
-    await prefs.setString(_seaConditionKey, json);
-    await prefs.setInt(_cacheTimestampKey, DateTime.now().millisecondsSinceEpoch);
+    final String? jsonString = prefs.getString(_storageKey);
+    
+    if (jsonString == null) return []; 
+
+    final List<dynamic> jsonList = jsonDecode(jsonString);
+    return jsonList.map((data) => SeaCondition.fromJson(data)).toList();
   }
 
-  // Get from cache
-  static Future<SeaCondition?> getFromCache() async {
+  // Fungsi untuk menyimpan data baru ke memori HP
+  static Future<void> addCustomReport(SeaCondition newReport) async {
     final prefs = await SharedPreferences.getInstance();
-    final json = prefs.getString(_seaConditionKey);
-    if (json != null) {
-      try {
-        return SeaCondition.fromJson(jsonDecode(json));
-      } catch (e) {
-        return null;
-      }
-    }
-    return null;
+    List<SeaCondition> currentList = await getSavedReports();
+    currentList.insert(0, newReport);
+    
+    final String encodedData = jsonEncode(currentList.map((e) => e.toJson()).toList());
+    await prefs.setString(_storageKey, encodedData);
   }
 
-  // Check if cache is still valid (less than 30 minutes old)
-  static Future<bool> isCacheValid() async {
-    final prefs = await SharedPreferences.getInstance();
-    final timestamp = prefs.getInt(_cacheTimestampKey);
-    if (timestamp == null) return false;
-
-    final cacheAge = DateTime.now().millisecondsSinceEpoch - timestamp;
-    return cacheAge < (30 * 60 * 1000); // 30 minutes
-  }
-
-  // Get sea condition with cache support
+  // Fungsi acak cuaca otomatis
   static Future<SeaCondition> getSeaCondition() async {
-    // Check cache first
-    if (await isCacheValid()) {
-      final cached = await getFromCache();
-      if (cached != null) return cached;
-    }
+    final random = Random();
+    double wave = 50 + random.nextDouble() * 300; 
+    double speed = 2 + random.nextDouble() * 25;   
+    double temp = 26 + random.nextDouble() * 5;
+    int hum = 70 + random.nextInt(25);
+    
+    List<String> directions = ['UTARA', 'TIMUR LAUT', 'TIMUR', 'TENGGARA', 'SELATAN', 'BARAT DAYA', 'BARAT', 'BARAT LAUT'];
+    String direction = directions[random.nextInt(directions.length)];
+    String status = (wave > 250 || speed > 20) ? 'BAHAYA' : (wave > 125 || speed > 10) ? 'WASPADA' : 'AMAN';
 
-    // Generate new data
-    final condition = generateCurrentSeaCondition();
-    await saveToCache(condition);
-    return condition;
+    return SeaCondition.fromJson({
+      'waveHeight': wave,
+      'windSpeed': speed,
+      'windDirection': direction,
+      'temperature': temp,
+      'humidity': hum,
+      'safetyStatus': status,
+    });
+  }
+
+  // 🔄 Fungsi pasang surut yang sudah diselaraskan dengan TideSchedule
+  static TideSchedule generateTideSchedule() {
+    DateTime now = DateTime.now();
+    return TideSchedule.fromJson({
+      'location': "Pesisir Pantai talang siring",
+      'lastUpdated': now.toIso8601String(),
+      'dataPoints': [
+        {'time': now.toIso8601String(), 'height': 1.0},
+        {'time': now.add(const Duration(hours: 6)).toIso8601String(), 'height': 1.2},
+        {'time': now.add(const Duration(hours: 12)).toIso8601String(), 'height': 0.8},
+        {'time': now.add(const Duration(hours: 18)).toIso8601String(), 'height': 0.5},
+        {'time': now.add(const Duration(hours: 24)).toIso8601String(), 'height': 1.1},
+      ],
+    });
   }
 }
