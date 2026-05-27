@@ -7,6 +7,7 @@ class SeaLocation {
   final String province;
   final String description;
   final bool isFavorite;
+  final String image;
 
   SeaLocation({
     required this.id,
@@ -16,6 +17,7 @@ class SeaLocation {
     required this.longitude,
     required this.province,
     required this.description,
+    required this.image,
     this.isFavorite = false,
   });
 
@@ -28,6 +30,7 @@ class SeaLocation {
       longitude: (json['longitude'] as num).toDouble(),
       province: json['province'] ?? '',
       description: json['description'] ?? '',
+      image: json['image'] ?? '',
       isFavorite: json['isFavorite'] ?? false,
     );
   }
@@ -41,6 +44,7 @@ class SeaLocation {
       'longitude': longitude,
       'province': province,
       'description': description,
+      'image': image,
       'isFavorite': isFavorite,
     };
   }
@@ -54,6 +58,7 @@ class SeaLocation {
       longitude: longitude,
       province: province,
       description: description,
+      image: image,
       isFavorite: isFavorite ?? this.isFavorite,
     );
   }
